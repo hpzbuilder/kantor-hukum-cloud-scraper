@@ -43,6 +43,10 @@ def main():
     run_step(["repo_harvest.py", "--sumber", "UNAIR Repository (Hukum)", "--limit", "30"], 
              "Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)")
 
+    # 3. Unduh Regulasi & Fiqih Haji dan Umroh (Kemenag & UIN)
+    run_step(["scraper_haji_umroh.py"], 
+             "Worker Spesialis — Regulasi & Fiqih Haji dan Umrah (JDIH Kemenag & UIN)")
+
     # 3. Pengayaan Metadata & Relasi Hukum
     run_step(["kb_metadata.py", "--limit", "40"], 
              "Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal")
