@@ -47,7 +47,11 @@ def main():
     run_step(["scraper_haji_umroh.py"], 
              "Worker Spesialis — Regulasi & Fiqih Haji dan Umrah (JDIH Kemenag & UIN)")
 
-    # 3. Pengayaan Metadata & Relasi Hukum
+    # 4. Unduh Berita & Informasi Kredibel Haji/Umrah (LKBN ANTARA 5 Tahun)
+    run_step(["scraper_berita_haji.py", "--limit", "40"], 
+             "Worker Berita — Arsip Berita Haji & Umrah 2021-2026 (LKBN ANTARA)")
+
+    # 5. Pengayaan Metadata & Relasi Hukum
     run_step(["kb_metadata.py", "--limit", "40"], 
              "Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal")
 
