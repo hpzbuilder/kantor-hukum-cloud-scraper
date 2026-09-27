@@ -1,0 +1,79 @@
+name: Cloud Legal Scraper & Auto-Harvest
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 4 jam (00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC)
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Memungkinkan tombol manual "Run workflow" di GitHub UI kapan saja
+
+permissions:
+  contents: write
+
+jobs:
+  scrape-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300 # Max 5 jam per run
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev libxslt-dev
+
+      - name: Install Python Packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Cloud Auto-Harvest Batch
+        id: run_batch
+        run: |
+          python run_cloud_batch.py
+
+      - name: Commit Updated SQLite Catalogs
+        run: |
+          git config --global user.name "Cloud Auto-Scraper"
+          git config --global user.email "bot@kantorhukum.internal"
+          git add knowledge_base/*.db
+          if git diff --staged --quiet; then
+            echo "Tidak ada perubahan status pada database."
+          else
+            git commit -m "chore: perbarui katalog & repo metadata [skip ci]"
+            git push
+          fi
+
+      - name: Publish Ready-to-Use Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: "release-${{ steps.run_batch.outputs.timestamp }}"
+          name: "📦 Data Hukum Siap Pakai — ${{ steps.run_batch.outputs.timestamp }} (${{ steps.run_batch.outputs.zip_size_mb }} MB)"
+          body: |
+            ### ⚖️ Paket Data Kantor Hukum Virtual (Auto-Harvest Cloud)
+            
+            - **Waktu Eksekusi:** ${{ steps.run_batch.outputs.timestamp }} UTC
+            - **Ukuran Arsip:** ${{ steps.run_batch.outputs.zip_size_mb }} MB
+            - **Total Berkas Terbundel:** ${{ steps.run_batch.outputs.file_count }} berkas
+            - **Isi Paket:**
+              - `knowledge_base/Regulasi_Nasional/` (.pdf & .md hasil ekstraksi PyMuPDF)
+              - `knowledge_base/Repositori/` (Tesis & Disertasi Hukum UNAIR)
+              - `knowledge_base/katalog.db` (Database status 90.000+ dokumen)
+              - `knowledge_base/repo.db` (Database karya ilmiah)
+              - `knowledge_base/metadata.db` (Taksonomi hukum kanonikal & relasi peraturan)
+              - `knowledge_base/indeks.db` (FTS5 Search Index siap cari)
+              
+            *Arsip ini siap diunduh sekali klik atau ditarik menggunakan skrip lokal `python sync_cloud.py`.*
+          files: ${{ steps.run_batch.outputs.zip_path }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
