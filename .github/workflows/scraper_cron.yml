@@ -51,6 +51,17 @@ jobs:
             git push
           fi
 
+      - name: Prune Old Releases
+        if: success()
+        run: |
+          OLD_RELEASES=$(gh release list -L 20 --json tagName -q '.[1:].tagName')
+          for tag in $OLD_RELEASES; do
+            echo "Memangkas rilis lama: $tag"
+            gh release delete "$tag" --cleanup-tag --yes || true
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Publish Ready-to-Use Release
         uses: softprops/action-gh-release@v2
         if: success()
