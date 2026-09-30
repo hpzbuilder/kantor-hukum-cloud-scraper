@@ -54,10 +54,12 @@ jobs:
       - name: Prune Old Releases
         if: success()
         run: |
-          OLD_RELEASES=$(gh release list -L 20 --json tagName -q '.[1:].tagName')
+          OLD_RELEASES=$(gh release list -L 30 --json tagName -q '.[2:][].tagName' 2>/dev/null || true)
           for tag in $OLD_RELEASES; do
-            echo "Memangkas rilis lama: $tag"
-            gh release delete "$tag" --cleanup-tag --yes || true
+            if [ -n "$tag" ]; then
+              echo "Memangkas rilis lama: $tag"
+              gh release delete "$tag" --cleanup-tag --yes || true
+            fi
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
