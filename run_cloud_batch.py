@@ -36,16 +36,20 @@ def main():
     print("============================================================")
 
     # 1. Unduh Regulasi Nasional (Agent 1)
-    run_step(["scraper_jdih_kemenkum.py", "--unduh", "--tipe", "perpres,permen,inpres", "--limit", "40"], 
-             "Agent 1 — Regulasi Nasional (Perpres/Permen/Inpres)")
+    # Agent 1 (JDIH Kemenkum) DINONAKTIFKAN di cloud sejak 2026-10-08:
+    # JDIH menolak IP runner GitHub -> 0 dokumen baru, ribuan 'gagal-halaman'.
+    # Jalankan Agent 1 dari PC lokal (IP Indonesia).
+    gagal = []
 
     # 2. Unduh Repositori Akademik / Tesis UNAIR (Agent 2)
-    run_step(["repo_harvest.py", "--sumber", "UNAIR Repository (Hukum)", "--limit", "30"], 
-             "Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)")
+    if not run_step(["repo_harvest.py", "--sumber", "UNAIR Repository (Hukum)", "--limit", "30"], 
+             "Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)"):
+        gagal.append("Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)")
 
     # 3. Pengayaan Metadata & Relasi Hukum
-    run_step(["kb_metadata.py", "--limit", "40"], 
-             "Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal")
+    if not run_step(["kb_metadata.py", "--limit", "40"], 
+             "Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal"):
+        gagal.append("Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal")
 
     # 4. Bangun Indeks FTS5
     run_step(["kb_index.py", "--build"], 
@@ -87,6 +91,10 @@ def main():
             f.write(f"zip_size_mb={zip_size_mb:.2f}\n")
             f.write(f"file_count={file_count}\n")
             f.write(f"timestamp={ts}\n")
+            f.write(f"failed_steps={' | '.join(gagal)}\n")
+
+    if gagal:
+        print("\n✘ LANGKAH GAGAL: " + "; ".join(gagal))
 
 if __name__ == "__main__":
     main()

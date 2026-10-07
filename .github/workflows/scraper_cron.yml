@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: legal-cloud-scraper
+  cancel-in-progress: false
+
 jobs:
   scrape-and-publish:
     runs-on: ubuntu-latest
@@ -51,18 +55,6 @@ jobs:
             git push
           fi
 
-      - name: Prune Old Releases
-        if: success()
-        run: |
-          OLD_RELEASES=$(gh release list -L 30 --json tagName -q '.[2:][].tagName' 2>/dev/null || true)
-          for tag in $OLD_RELEASES; do
-            if [ -n "$tag" ]; then
-              echo "Memangkas rilis lama: $tag"
-              gh release delete "$tag" --cleanup-tag --yes || true
-            fi
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish Ready-to-Use Release
         uses: softprops/action-gh-release@v2
@@ -90,3 +82,9 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Gate — gagalkan run jika ada langkah gagal
+        if: always() && steps.run_batch.outputs.failed_steps != ''
+        run: |
+          echo "Langkah gagal: ${{ steps.run_batch.outputs.failed_steps }}"
+          exit 1
