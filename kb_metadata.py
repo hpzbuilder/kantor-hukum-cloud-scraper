@@ -76,7 +76,7 @@ def bersih(s):
     return re.sub(r"^[-–]\s*$", "", s).strip()
 
 
-def get(url, timeout=45):
+def get(url, timeout=10):
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept-Language": "id-ID,id;q=0.9"})
     try:
@@ -301,15 +301,26 @@ def main():
     log.info("=" * 60)
 
     ok = 0
+    gagal_berturut = 0
     for i, r in enumerate(rows, 1):
         try:
-            if proses(con, r):
+            res = proses(con, r)
+            if res:
                 ok += 1
+                gagal_berturut = 0
+            else:
+                gagal_berturut += 1
         except Exception as e:
             log.error(f"  error: {type(e).__name__}: {e}")
+            gagal_berturut += 1
+
+        if gagal_berturut >= 3:
+            log.warning("✘ Terjadi 3 kegagalan berturut-turut pada JDIH (IP diblokir/WAF aktif). Menghentikan langkah metadata lebih awal agar tidak membuang waktu runner.")
+            break
+
         if i % 25 == 0:
             log.info(f"  ... istirahat (sudah {i})")
-            time.sleep(random.uniform(60, 120))
+            time.sleep(random.uniform(30, 60))
         else:
             time.sleep(random.uniform(*JEDA))
 

@@ -35,19 +35,19 @@ def main():
     print(f"   Waktu Mulai: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print("============================================================")
 
-    # 1. Unduh Regulasi Nasional (Agent 1)
-    # Agent 1 (JDIH Kemenkum) DINONAKTIFKAN di cloud sejak 2026-10-08:
-    # JDIH menolak IP runner GitHub -> 0 dokumen baru, ribuan 'gagal-halaman'.
-    # Jalankan Agent 1 dari PC lokal (IP Indonesia).
+    # 1. Unduh Regulasi Nasional & Putusan Uji Materi (Cloud-Friendly Harvester BPK RI)
     gagal = []
+    if not run_step(["harvester_bpk.py"], 
+             "Agent 1 — Database Peraturan & Putusan Uji Materi BPK RI"):
+        gagal.append("Agent 1 — Database Peraturan & Putusan Uji Materi BPK RI")
 
     # 2. Unduh Repositori Akademik / Tesis UNAIR (Agent 2)
     if not run_step(["repo_harvest.py", "--sumber", "UNAIR Repository (Hukum)", "--limit", "30"], 
              "Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)"):
         gagal.append("Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)")
 
-    # 3. Pengayaan Metadata & Relasi Hukum
-    if not run_step(["kb_metadata.py", "--limit", "40"], 
+    # 3. Pengayaan Metadata & Relasi Hukum (dengan proteksi timeout/circuit breaker)
+    if not run_step(["kb_metadata.py", "--limit", "10"], 
              "Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal"):
         gagal.append("Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal")
 
