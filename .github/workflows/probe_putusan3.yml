@@ -1,0 +1,24 @@
+name: Probe putusan3 (sekali pakai)
+on:
+  push:
+    branches: ['probe/putusan3']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Jalankan probe
+        run: python probe/probe_putusan3.py | tee probe/probe_log.txt
+      - name: Simpan hasil ke branch probe-result
+        if: always()
+        run: |
+          git config user.name "probe-bot"; git config user.email "bot@kantorhukum.internal"
+          git checkout -B probe-result
+          git add -f probe/probe_result.json probe/probe_log.txt
+          git commit -m "probe result [skip ci]" || true
+          git push -f origin probe-result
