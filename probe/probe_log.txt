@@ -1,0 +1,11 @@
+runner_ip: 134.33.101.133
+{"label": "home", "status": 403, "elapsed_s": 1.9, "body_bytes": 5696, "markers": ["just a moment"], "title": "Just a moment...", "putusan_links": 0, "pdf_links": 0}
+{"label": "robots", "status": 200, "elapsed_s": 0.38, "body_bytes": 854, "markers": [], "title": "", "putusan_links": 0, "pdf_links": 0}
+{"label": "home_bot_ua", "status": 403, "elapsed_s": 0.07, "body_bytes": 5654, "markers": ["just a moment"], "title": "Just a moment...", "putusan_links": 0, "pdf_links": 0}
+{"label": "listing_kategori", "status": 403, "elapsed_s": 0.06, "body_bytes": 5952, "markers": ["just a moment"], "title": "Just a moment...", "putusan_links": 0, "pdf_links": 0}
+{"label": "listing_page2", "status": 403, "elapsed_s": 0.06, "body_bytes": 5995, "markers": ["just a moment"], "title": "Just a moment...", "putusan_links": 0, "pdf_links": 0}
+{"label": "search", "status": 403, "elapsed_s": 0.06, "body_bytes": 2372, "markers": ["access denied"], "title": "Access Denied", "putusan_links": 0, "pdf_links": 0}
+{"label": "burst_0", "status": 403, "elapsed_s": 0.06, "body_bytes": 5952, "markers": ["just a moment"], "title": "Just a moment...", "putusan_links": 0, "pdf_links": 0}
+{"label": "burst_1", "status": 403, "elapsed_s": 0.06, "body_bytes": 5952, "markers": ["just a moment"], "title": "Just a moment...", "putusan_links": 0, "pdf_links": 0}
+{"label": "burst_2", "status": 403, "elapsed_s": 0.06, "body_bytes": 5952, "markers": ["just a moment"], "title": "Just a moment...", "putusan_links": 0, "pdf_links": 0}
+selesai

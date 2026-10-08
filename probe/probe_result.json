@@ -1,0 +1,187 @@
+{
+  "runner_ip": "134.33.101.133",
+  "robots_txt": "# Legitimate search engines — explicit allow\nUser-agent: Googlebot\nCrawl-delay: 10\nDisallow: /search\nAllow: /\n\nUser-agent: bingbot\nCrawl-delay: 10\nDisallow: /search\nAllow: /\n\nUser-agent: YandexBot\nCrawl-delay: 15\nDisallow: /search\nAllow: /\n\nUser-agent: Baiduspider\nCrawl-delay: 15\nDisallow: /search\nAllow: /\n\n# AI crawlers — block all\nUser-agent: GPTBot\nDisallow: /\n\nUser-agent: OAI-SearchBot\nDisallow: /\n\nUser-agent: ChatGPT-User\nDisallow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n\nUser-agent: Claude-SearchBot\nDisallow: /\n\nUser-agent: anthropic-ai\nDisallow: /\n\nUser-agent: CCBot\nDisallow: /\n\nUser-agent: PerplexityBot\nDisallow: /\n\nUser-agent: Amazonbot\nDisallow: /\n\nUser-agent: Bytespider\nDisallow: /\n\nUser-agent: Google-Extended\nDisallow: /\n\nUser-agent: Meta-ExternalAgent\nDisallow: /\n\n# Everything else — block by default\nUser-agent: *\nDisallow: /\n",
+  "detail_sample": [],
+  "pdf_sample": [],
+  "results": [
+    {
+      "label": "home",
+      "url": "https://putusan3.mahkamahagung.go.id/",
+      "ua": "browser",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a477204a2a4b4b1f-LAX"
+      },
+      "elapsed_s": 1.9,
+      "body_bytes": 5696,
+      "markers": [
+        "just a moment"
+      ],
+      "title": "Just a moment...",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "robots",
+      "url": "https://putusan3.mahkamahagung.go.id/robots.txt",
+      "ua": "browser",
+      "method": "GET",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/plain",
+        "Server": "cloudflare",
+        "set-cookie": "_cfuvid=gvQkSzQM7Gprk830vmsdDcMNI5N3nwDNQKlJbOYSdto-1791483278.9319084-1.0.1.1-ECNNUpk7JLMOPPA8.o7TJF9DK8Y2XNTDkJMH1UPVNYM; HttpOnly; SameSite=None; Secure; Path=/; Domain=mahkamahagung.go.id",
+        "CF-RAY": "a477205d5d486e2c-LAX"
+      },
+      "elapsed_s": 0.38,
+      "body_bytes": 854,
+      "markers": [],
+      "title": "",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "home_bot_ua",
+      "url": "https://putusan3.mahkamahagung.go.id/",
+      "ua": "bot",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a47720727e982a8c-LAX"
+      },
+      "elapsed_s": 0.07,
+      "body_bytes": 5654,
+      "markers": [
+        "just a moment"
+      ],
+      "title": "Just a moment...",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "listing_kategori",
+      "url": "https://putusan3.mahkamahagung.go.id/direktori/index/pengadilan/pn-ciamis/kategori/anak-1.html",
+      "ua": "browser",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a47720859d1e4b1f-LAX"
+      },
+      "elapsed_s": 0.06,
+      "body_bytes": 5952,
+      "markers": [
+        "just a moment"
+      ],
+      "title": "Just a moment...",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "listing_page2",
+      "url": "https://putusan3.mahkamahagung.go.id/direktori/index/pengadilan/pn-ciamis/kategori/anak-1/page/2.html",
+      "ua": "browser",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a4772098b9bbefba-LAX"
+      },
+      "elapsed_s": 0.06,
+      "body_bytes": 5995,
+      "markers": [
+        "just a moment"
+      ],
+      "title": "Just a moment...",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "search",
+      "url": "https://putusan3.mahkamahagung.go.id/search.html?q=wanprestasi+haji",
+      "ua": "browser",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html",
+        "Cf-Ray": "a47720abdb5e4b1f-LAX",
+        "Server": "cloudflare"
+      },
+      "elapsed_s": 0.06,
+      "body_bytes": 2372,
+      "markers": [
+        "access denied"
+      ],
+      "title": "Access Denied",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "burst_0",
+      "url": "https://putusan3.mahkamahagung.go.id/direktori/index/pengadilan/pn-ciamis/kategori/anak-1.html",
+      "ua": "browser",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a47720befeaaefba-LAX"
+      },
+      "elapsed_s": 0.06,
+      "body_bytes": 5952,
+      "markers": [
+        "just a moment"
+      ],
+      "title": "Just a moment...",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "burst_1",
+      "url": "https://putusan3.mahkamahagung.go.id/direktori/index/pengadilan/pn-ciamis/kategori/anak-1.html",
+      "ua": "browser",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a47720d21e764b1f-LAX"
+      },
+      "elapsed_s": 0.06,
+      "body_bytes": 5952,
+      "markers": [
+        "just a moment"
+      ],
+      "title": "Just a moment...",
+      "putusan_links": 0,
+      "pdf_links": 0
+    },
+    {
+      "label": "burst_2",
+      "url": "https://putusan3.mahkamahagung.go.id/direktori/index/pengadilan/pn-ciamis/kategori/anak-1.html",
+      "ua": "browser",
+      "method": "GET",
+      "status": 403,
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a47720e539226e2c-LAX"
+      },
+      "elapsed_s": 0.06,
+      "body_bytes": 5952,
+      "markers": [
+        "just a moment"
+      ],
+      "title": "Just a moment...",
+      "putusan_links": 0,
+      "pdf_links": 0
+    }
+  ]
+}
