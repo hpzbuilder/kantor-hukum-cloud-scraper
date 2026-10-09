@@ -46,9 +46,8 @@ def main():
     if not run_step(["repo_harvest.py", "--sumber", "UNAIR Repository (Hukum)", "--limit", "40"],
              "Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)"):
         gagal.append("Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)")
-    if not run_step(["repo_harvest.py", "--sumber", "Undip Repository (Hukum)", "--limit", "20"],
-             "Agent 2 — Repositori Akademik (Hukum Undip)"):
-        gagal.append("Agent 2 — Repositori Akademik (Hukum Undip)")
+    # Undip (eprints.undip.ac.id) dikeluarkan: halaman karya menulis "Full text not available
+    # from this repository" (hanya metadata) -> 20/20 'tanpa-pdf', 5 menit runner terbuang.
 
     # 2. Pengayaan Metadata & Relasi Hukum (dengan proteksi timeout/circuit breaker)
     if not run_step(["kb_metadata.py", "--limit", "10"], 
