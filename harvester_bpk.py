@@ -322,8 +322,8 @@ def sudah_di_jdih(katalog, bentuk_singkat, nomor, tahun):
 
 
 # ------------------------------------------------------------------ proses
-def proses_peraturan(con, klien, kb: Path, row, katalog, unduh_um=True):
-    bpk_id, slug, url = row
+def proses_peraturan(con, klien, kb: Path, row, katalog, simpan_pdf_tier=1):
+    bpk_id, slug, url, tier = row
     sekarang = datetime.now().isoformat(timespec="seconds")
     r = klien.get(url)
     if r is None or r.status_code != 200:
@@ -406,9 +406,17 @@ def proses_peraturan(con, klien, kb: Path, row, katalog, unduh_um=True):
         kepala += "\n> CATATAN: PDF hasil pindai — teks belum terekstrak (perlu OCR).\n"
     md_path.write_text(kepala + "\n---\n\n" + isi, encoding="utf-8")
 
-    con.execute("""UPDATE peraturan SET pdf_path=?, md_path=?, halaman=?, panjang_teks=?, sha256=?, status=?
-        WHERE bpk_id=?""", (str(pdf_path.relative_to(kb)), str(md_path.relative_to(kb)), n_hal,
-                            len(murni), sha256(pdf_path), status, bpk_id))
+    hash_pdf = sha256(pdf_path)
+    pdf_simpan = str(pdf_path.relative_to(kb))
+    catatan = None
+    if tier > simpan_pdf_tier and status == "selesai":
+        # Hemat disk: PDF ~98% ukuran. Teks + sha256 + URL resmi cukup untuk tier rendah;
+        # PDF pindaian (teks-kosong) tetap disimpan untuk OCR.
+        pdf_path.unlink(missing_ok=True)
+        pdf_simpan, catatan = None, "PDF tidak disimpan (hemat disk); unduh ulang dari pdf_url, cek sha256"
+    con.execute("""UPDATE peraturan SET pdf_path=?, md_path=?, halaman=?, panjang_teks=?, sha256=?, status=?,
+        catatan=? WHERE bpk_id=?""", (pdf_simpan, str(md_path.relative_to(kb)), n_hal,
+                                      len(murni), hash_pdf, status, catatan, bpk_id))
     con.commit()
     return status
 
@@ -487,6 +495,8 @@ def main():
     ap.add_argument("--katalog", default=None, help="katalog.db JDIH untuk dedup (default: <kb>/katalog.db)")
     ap.add_argument("--jeda-min", type=float, default=2.0)
     ap.add_argument("--jeda-maks", type=float, default=4.0)
+    ap.add_argument("--simpan-pdf-tier", type=int, default=1,
+                    help="simpan PDF hanya untuk tier <= N (default 1: UU/Perppu/PP/Perpres); 9 = semua")
     ap.add_argument("--statistik", action="store_true")
     a = ap.parse_args()
 
@@ -509,13 +519,13 @@ def main():
     try:
         log.info(f"=== BPK: isi antrean dari sitemap {a.tahun_mulai}→{a.tahun_akhir} ===")
         isi_antrean(con, klien, a.tahun_mulai, a.tahun_akhir, a.tingkat == "semua")
-        rows = con.execute("""SELECT bpk_id, slug, url FROM peraturan
+        rows = con.execute("""SELECT bpk_id, slug, url, tier FROM peraturan
             WHERE status='antre' AND tier<=? AND tahun_sitemap BETWEEN ? AND ?
             ORDER BY tier, tahun_sitemap DESC, bpk_id DESC LIMIT ?""",
                            (a.tier_maks, a.tahun_akhir, a.tahun_mulai, a.limit)).fetchall()
         log.info(f"=== BPK: memproses {len(rows)} peraturan (urut terbaru, prioritas UU/PP/Perpres) ===")
         for i, row in enumerate(rows, 1):
-            st = proses_peraturan(con, klien, kb, row, katalog)
+            st = proses_peraturan(con, klien, kb, row, katalog, a.simpan_pdf_tier)
             hitung[st] = hitung.get(st, 0) + 1
             log.info(f"  [{i}/{len(rows)}] {st:14} {row[1]}")
             klien.tidur()
