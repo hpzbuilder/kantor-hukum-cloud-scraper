@@ -236,26 +236,50 @@ JENIS_KATA = {
 }
 
 
+PDF_BUANG = re.compile(r"cover|sampul|halaman[ _%20-]*depan|daftar[ _%20-]*(isi|pustaka)|"
+                       r"lampiran|pengesahan|kata[ _%20-]*pengantar|pernyataan", re.I)
+PDF_ISI = re.compile(r"bab|full|isi|tesis|thesis|skripsi|disertasi|chapter", re.I)
+MAKS_PDF_PER_KARYA = 4
+MIN_TEKS_SELESAI = 5000
+
+
+def urutkan_pdf(pdfs, eprint_id):
+    """Urutan unduh: berkas teks penuh ({id}.pdf / bab / isi) dulu, buang sampul & lampiran.
+    Bila hanya tersisa sampul/abstrak, tetap ambil berkas pertama (status 'teks-pendek')."""
+    nama = lambda u: urllib.parse.unquote(u.rsplit("/", 1)[-1]).lower()
+    utama = [u for u in pdfs if eprint_id and nama(u) == f"{eprint_id}.pdf"]
+    isi = [u for u in pdfs if u not in utama and not PDF_BUANG.search(nama(u))]
+    isi.sort(key=lambda u: (not PDF_ISI.search(nama(u)), nama(u)))
+    hasil = utama + isi
+    return hasil or pdfs[:1]
+
+
 def parse_record(rec, sumber):
     judul = (tag(rec, "dc:title") or [""])[0]
     if not judul:
         return None
     ids = tag(rec, "dc:identifier")
-    landing = next((i for i in ids if i.startswith("http") and i.rstrip("/").count("/") >= 3
-                    and not i.lower().endswith(".pdf")), "")
-    pdf = next((i for i in ids if i.lower().endswith(".pdf")), "")
-    if not landing and not pdf:
+    # ID unik = nomor eprint di header OAI (oai:host:3145 -> "3145"). Dulu diambil dari
+    # nama berkas PDF ("1.COVER.pdf") sehingga banyak tesis saling menimpa.
+    m_oai = re.search(r"<identifier>[^<]*:(\d+)</identifier>", rec)
+    eprint_id = m_oai.group(1) if m_oai else ""
+    kandidat = [i for i in ids + tag(rec, "dc:relation")
+                if i.startswith("http") and not i.lower().endswith(".pdf")]
+    landing = next((i for i in kandidat if eprint_id and re.search(rf"/{eprint_id}/?$", i)), "") \
+        or next((i for i in kandidat if i.rstrip("/").count("/") >= 3), "")
+    pdfs = urutkan_pdf([i for i in ids if i.lower().endswith(".pdf")], eprint_id)
+    if not landing and not pdfs:
         return None
     teks_jenis = " ".join(tag(rec, "dc:type") + tag(rec, "dc:description")[:1]).lower()
     jenis = next((v for k, v in JENIS_KATA.items() if k in teks_jenis), "")
     if not jenis:
         jenis = next((v for k, v in JENIS_KATA.items() if k in judul.lower()), "karya")
     return {
-        "id": bersih((landing or pdf).rstrip("/").rsplit("/", 1)[-1]) or bersih(judul),
+        "id": eprint_id or bersih((landing or pdfs[0]).rstrip("/").rsplit("/", 1)[-1]) or bersih(judul),
         "sumber": sumber["nama"], "penerbit": sumber["penerbit"], "jenis": jenis,
         "judul": judul, "penulis": "; ".join(tag(rec, "dc:creator")[:4]),
         "tahun": (tag(rec, "dc:date") or [""])[0][:10],
-        "url": landing or pdf, "pdf_url": pdf,
+        "url": landing or pdfs[0], "pdf_url": pdfs[0] if pdfs else "", "pdfs": pdfs,
         "abstrak": re.sub(r"\s+", " ", (tag(rec, "dc:description") or [""])[0])[:1500],
         "subjek": "; ".join(tag(rec, "dc:subject")[:6]),
     }
@@ -276,38 +300,43 @@ def proses(con, a, meta_saja):
         simpan(con, a, "meta")
         return True
 
-    pdf_url = a.get("pdf_url") or cari_pdf(a["url"])
-    if not pdf_url:
+    pdfs = a.get("pdfs") or []
+    if not pdfs:
+        cari = cari_pdf(a["url"])
+        pdfs = [cari] if cari else []
+    if not pdfs:
         simpan(con, a, "tanpa-pdf")
         return False
 
     PDF_DIR.mkdir(parents=True, exist_ok=True)
-    pdf_path = PDF_DIR / f"{a['id']}.pdf"
-
-    if not pdf_path.exists():
-        sukses_pdf = unduh_stream_pdf(pdf_url, pdf_path)
-        if not sukses_pdf:
-            simpan(con, a, "gagal-pdf")
-            return False
-        jeda(JEDA_PDF)
-
-    try:
-        doc = fitz.open(pdf_path)
-    except Exception as e:
-        log.warning(f"    PDF rusak: {e}")
-        simpan(con, a, "pdf-rusak")
+    bagian, n_hal, dipakai, pdf_paths = [], 0, [], []
+    for k, url_pdf in enumerate(pdfs[:MAKS_PDF_PER_KARYA]):
+        pdf_path = PDF_DIR / (f"{a['id']}.pdf" if k == 0 else f"{a['id']}_{k}.pdf")
+        if not pdf_path.exists():
+            if not unduh_stream_pdf(url_pdf, pdf_path):
+                continue
+            jeda(JEDA_PDF)
+        try:
+            doc = fitz.open(pdf_path)
+        except Exception as e:
+            log.warning(f"    PDF rusak: {e}")
+            continue
+        n_hal += doc.page_count
+        for i, page in enumerate(doc):
+            t = page.get_text().strip()
+            if t:
+                bagian.append(t)
+            if i >= 59:
+                break
+        doc.close()
+        dipakai.append(url_pdf)
+        pdf_paths.append(str(pdf_path))
+    if not dipakai:
+        simpan(con, a, "gagal-pdf")
         return False
-
-    n_hal = doc.page_count
-    bagian = []
-    for i, page in enumerate(doc):
-        t = page.get_text().strip()
-        if t:
-            bagian.append(t)
-        if i >= 59:
-            break
-    doc.close()
     teks = "\n\n".join(bagian)
+    pdf_url = " | ".join(dipakai)
+    a["pdf_url"] = dipakai[0]
 
     folder = KB_DIR / bersih(a["sumber"])
     folder.mkdir(parents=True, exist_ok=True)
@@ -326,8 +355,10 @@ def proses(con, a, meta_saja):
         f"## Abstrak\n\n{a['abstrak'] or '-'}\n\n---\n\n{teks}\n",
         encoding="utf-8")
 
-    a["pdf_path"], a["md_path"] = str(pdf_path), str(md_path)
-    simpan(con, a, "selesai", n_hal, len(teks))
+    a["pdf_path"], a["md_path"] = " | ".join(pdf_paths), str(md_path)
+    # Hanya sampul/abstrak yang tersedia → jangan diklaim teks penuh.
+    status = "selesai" if len(teks) >= MIN_TEKS_SELESAI else "teks-pendek"
+    simpan(con, a, status, n_hal, len(teks))
     log.info(f"    teks {len(teks)} char -> {md_path.name}")
     return True
 
@@ -373,7 +404,7 @@ def main():
         # lalu ambil yang terbaru. Dulu: selalu 30 rekaman yang sama → 0 karya baru.
         recs = harvest(s["oai"], maks=MAKS_REKAM_OAI, set_spec=s.get("set"), dari=dari)
         final = {r[0] for r in con.execute(
-            "SELECT id FROM karya WHERE status IN ('selesai','tanpa-pdf','gagal-pdf')")}
+            "SELECT id FROM karya WHERE status IN ('selesai','teks-pendek','tanpa-pdf','gagal-pdf')")}
         calon = [a for a in (parse_record(r, s) for r in recs)
                  if a and a["id"] not in final and relevan_hukum(a)]
         calon.sort(key=lambda a: a.get("tahun") or "", reverse=True)
