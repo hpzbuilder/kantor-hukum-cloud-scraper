@@ -35,27 +35,31 @@ def main():
     print(f"   Waktu Mulai: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print("============================================================")
 
-    # 1. Unduh Regulasi Nasional & Putusan Uji Materi (Cloud-Friendly Harvester BPK RI)
+    # CATATAN: JDIH BPK, JDIH Kemenkum, putusan3 MA, dan MKRI memblokir IP datacenter
+    # GitHub Actions (HTTP 403 Cloudflare/WAF — terbukti dari log & probe 8 Okt 2026).
+    # Regulasi & putusan uji materi MK dipanen dari komputer lokal:
+    #   python harvester_bpk.py --kb "<Kantor Hukum Virtual>/knowledge_base" --limit 150
+    # Cloud fokus ke sumber yang tidak memblokir runner (OAI-PMH repositori kampus).
     gagal = []
-    if not run_step(["harvester_bpk.py"], 
-             "Agent 1 — Database Peraturan & Putusan Uji Materi BPK RI"):
-        gagal.append("Agent 1 — Database Peraturan & Putusan Uji Materi BPK RI")
 
-    # 2. Unduh Repositori Akademik / Tesis UNAIR (Agent 2)
-    if not run_step(["repo_harvest.py", "--sumber", "UNAIR Repository (Hukum)", "--limit", "30"], 
+    # 1. Repositori Akademik (Tesis/Disertasi Hukum) — UNAIR & Undip via OAI-PMH
+    if not run_step(["repo_harvest.py", "--sumber", "UNAIR Repository (Hukum)", "--limit", "40"],
              "Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)"):
         gagal.append("Agent 2 — Repositori Akademik (Tesis/Disertasi Hukum UNAIR)")
+    if not run_step(["repo_harvest.py", "--sumber", "Undip Repository (Hukum)", "--limit", "20"],
+             "Agent 2 — Repositori Akademik (Hukum Undip)"):
+        gagal.append("Agent 2 — Repositori Akademik (Hukum Undip)")
 
-    # 3. Pengayaan Metadata & Relasi Hukum (dengan proteksi timeout/circuit breaker)
+    # 2. Pengayaan Metadata & Relasi Hukum (dengan proteksi timeout/circuit breaker)
     if not run_step(["kb_metadata.py", "--limit", "10"], 
              "Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal"):
         gagal.append("Koordinator — Ekstraksi Metadata & Taksonomi Kanonikal")
 
-    # 4. Bangun Indeks FTS5
+    # 3. Bangun Indeks FTS5
     run_step(["kb_index.py", "--build"], 
              "Koordinator — Rebuild FTS5 Search Index")
 
-    # 5. Kompresi Paket Hasil Siap Pakai
+    # 4. Kompresi Paket Hasil Siap Pakai
     print(f"\n{'='*60}")
     print("📦 MEMBUAT ARSIP PAKET DATA SIAP PAKAI (.ZIP)")
     print(f"{'='*60}")

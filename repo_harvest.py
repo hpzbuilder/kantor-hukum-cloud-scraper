@@ -178,6 +178,24 @@ def list_sets(oai_url):
     return re.findall(r"<setSpec>([^<]+)</setSpec>", xml)
 
 
+MAKS_REKAM_OAI = 6000
+
+# Set "Subject K" UNAIR ikut memuat tesis non-hukum yang salah label (mis. kedokteran,
+# pangan). Saring dengan kosakata hukum pada judul/subjek agar korpus tetap relevan.
+KATA_HUKUM = re.compile(
+    r"hukum|undang|peraturan|perda|putusan|pengadilan|hakim|pidana|perdata|sengketa|"
+    r"perjanjian|kontrak|akta|notaris|ppat|tanggung gugat|tanggung jawab|wanprestasi|"
+    r"perlindungan|kewenangan|yuridis|legal|konstitusi|perseroan|kepailitan|pailit|"
+    r"waris|perkawinan|cerai|hak (atas|milik|cipta|merek|paten)|tanah|pajak|korupsi|"
+    r"tindak|sanksi|gugatan|arbitrase|mediasi|ketenagakerjaan|pekerja|konsumen|"
+    r"law|jurisdic|liability|court|statute", re.I)
+
+
+def relevan_hukum(a):
+    teks = f"{a.get('judul', '')} {a.get('abstrak', '')[:300]}"
+    return bool(KATA_HUKUM.search(teks))
+
+
 def harvest(oai_url, maks, set_spec=None, dari=None):
     url = f"{oai_url}?verb=ListRecords&metadataPrefix=oai_dc"
     if set_spec:
@@ -351,17 +369,16 @@ def main():
         log.info(f"\n--- {s['nama']} ---")
         sets = list_sets(s["oai"])
         log.info(f"    set tersedia: {len(sets)}")
-        recs = harvest(s["oai"], maks=max(limit * 12, 60),
-                       set_spec=s.get("set"), dari=dari)
-        recs = list(reversed(recs))[:limit]
-        log.info(f"    {len(recs)} karya diproses")
-        for i, rec in enumerate(recs, 1):
-            a = parse_record(rec, s)
-            if not a:
-                continue
-            if con.execute("SELECT 1 FROM karya WHERE id=? AND status='selesai'",
-                           (a["id"],)).fetchone():
-                continue
+        # Panen seluruh set (dibatasi MAKS_REKAM_OAI), buang yang sudah final di DB,
+        # lalu ambil yang terbaru. Dulu: selalu 30 rekaman yang sama → 0 karya baru.
+        recs = harvest(s["oai"], maks=MAKS_REKAM_OAI, set_spec=s.get("set"), dari=dari)
+        final = {r[0] for r in con.execute(
+            "SELECT id FROM karya WHERE status IN ('selesai','tanpa-pdf','gagal-pdf')")}
+        calon = [a for a in (parse_record(r, s) for r in recs)
+                 if a and a["id"] not in final and relevan_hukum(a)]
+        calon.sort(key=lambda a: a.get("tahun") or "", reverse=True)
+        log.info(f"    rekaman OAI: {len(recs)} | belum diproses: {len(calon)} | diambil: {min(limit, len(calon))}")
+        for i, a in enumerate(calon[:limit], 1):
             try:
                 if proses(con, a, meta_saja):
                     ok += 1
