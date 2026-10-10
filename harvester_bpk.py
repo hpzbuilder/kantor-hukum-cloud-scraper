@@ -435,7 +435,10 @@ def proses_uji_materi(con, klien, kb: Path, batas):
         WHERE u.status='antre' ORDER BY u.um_id DESC LIMIT ?""", (batas,)).fetchall()
     hasil = {}
     for um_id, nomor, label, amar, pdf_url, judul_uu in rows:
-        sub = kb / "Putusan_MK" / "BPK_UjiMateri"
+        # Lampiran "Uji Materi" BPK memuat putusan MK (PUU/SKLN...) DAN putusan MA (hak uji materiil: "12 P/HUM/2024").
+        ma = bool(re.search(r"HUM", nomor, re.I))
+        lembaga = "Mahkamah Agung" if ma else "Mahkamah Konstitusi"
+        sub = kb / ("Putusan_MA" if ma else "Putusan_MK") / "BPK_UjiMateri"
         pdf_path = sub / f"um{um_id}_{nama_aman(nomor.replace('/', '-'), 60)}.pdf"
         klien.tidur()
         ok, alasan = unduh_pdf(klien, pdf_url, pdf_path)
@@ -452,11 +455,11 @@ def proses_uji_materi(con, klien, kb: Path, batas):
         murni = re.sub(r"--- Halaman \d+ ---|\s", "", isi)
         status = "selesai" if len(murni) >= 300 else "teks-kosong"
         md_path = pdf_path.with_suffix(".md")
-        md_path.write_text(f"""# Putusan Mahkamah Konstitusi Nomor {nomor}
+        md_path.write_text(f"""# Putusan {lembaga} Nomor {nomor}
 
-**Tipe      :** Putusan MK (Pengujian Undang-Undang)
-**Kategori  :** Putusan Mahkamah Konstitusi (via JDIH BPK RI)
-**UU Diuji  :** {label} — {judul_uu or '-'}
+**Tipe      :** {"Putusan MA (Hak Uji Materiil)" if ma else "Putusan MK (Pengujian Undang-Undang)"}
+**Kategori  :** Putusan {lembaga} (via JDIH BPK RI)
+**Peraturan Diuji:** {label} — {judul_uu or '-'}
 **Amar (ringkas BPK):** {amar or '-'}
 **PDF Resmi :** {pdf_url}
 **Halaman   :** {n_hal}
@@ -470,7 +473,7 @@ def proses_uji_materi(con, klien, kb: Path, batas):
                                                   n_hal, len(murni), sha256(pdf_path), status, sekarang, um_id))
         con.commit()
         hasil[status] = hasil.get(status, 0) + 1
-        log.info(f"  [UM {status}] Putusan MK {nomor} ({n_hal} hlm)")
+        log.info(f"  [UM {status}] Putusan {'MA' if ma else 'MK'} {nomor} ({n_hal} hlm)")
     return hasil
 
 
