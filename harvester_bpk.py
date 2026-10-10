@@ -509,6 +509,8 @@ def main():
     ap.add_argument("--jeda-maks", type=float, default=4.0)
     ap.add_argument("--simpan-pdf-tier", type=int, default=1,
                     help="simpan PDF hanya untuk tier <= N (default 1: UU/Perppu/PP/Perpres); 9 = semua")
+    ap.add_argument("--log", default=None, help="berkas log (default: <induk --kb>/harvester_bpk.log). "
+                    "Beri nama berbeda bila menjalankan beberapa proses paralel.")
     ap.add_argument("--statistik", action="store_true")
     a = ap.parse_args()
 
@@ -516,7 +518,7 @@ def main():
     kb.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s",
                         handlers=[logging.StreamHandler(),
-                                  logging.FileHandler(kb.parent / "harvester_bpk.log", encoding="utf-8")])
+                                  logging.FileHandler(Path(a.log) if a.log else kb.parent / "harvester_bpk.log", encoding="utf-8")])
     con = db_buka(kb)
     if a.statistik:
         statistik(con)
