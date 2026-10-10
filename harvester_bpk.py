@@ -63,6 +63,14 @@ TIER2 = ("inpres", "keppres", "perma", "peraturan-ma", "peraturan-mk", "pbi",
 POLA_DAERAH = re.compile(r"(^|-)(kab|kota|prov)(-|$)|^(perda|perbup|perwali|pergub|perkada|qanun)")
 
 
+POLA_PROVINSI = re.compile(r"^(pergub|perda-prov|perdasus|perdasi|qanun-prov|perkada-prov)|(^|-)prov(-|$)")
+
+
+def tier_daerah(slug: str) -> int:
+    """Peraturan daerah: 8 = tingkat provinsi (diprioritaskan), 9 = kabupaten/kota/desa."""
+    return 8 if POLA_PROVINSI.search(slug.split("/")[-1]) else 9
+
+
 def tier_dari_slug(slug: str) -> int | None:
     """None = dilewati (peraturan daerah). Lebih kecil = lebih penting."""
     nama = slug.split("/")[-1]
@@ -183,7 +191,7 @@ def isi_antrean(con, klien, tahun_mulai, tahun_akhir, semua_tingkat, segarkan_ha
             cur = con.execute(
                 "INSERT OR IGNORE INTO peraturan (bpk_id, slug, url, tier, tahun_sitemap, lastmod) "
                 "VALUES (?,?,?,?,?,?)",
-                (int(m.group(1)), m.group(2), url, tier or 9, th, lm.group(1) if lm else None))
+                (int(m.group(1)), m.group(2), url, tier or tier_daerah(m.group(2)), th, lm.group(1) if lm else None))
             n_baru += cur.rowcount
         con.execute("INSERT OR REPLACE INTO sitemap_tahun VALUES (?,?,?,?)",
                     (th, len(blok), n_baru, datetime.now().isoformat(timespec="seconds")))
@@ -490,7 +498,11 @@ def main():
     ap.add_argument("--limit-uji-materi", type=int, default=10)
     ap.add_argument("--tahun-mulai", type=int, default=datetime.now().year)
     ap.add_argument("--tahun-akhir", type=int, default=2015)
-    ap.add_argument("--tier-maks", type=int, default=3, help="1=UU/PP/Perpres saja, 3=+peraturan menteri")
+    ap.add_argument("--tier-min", type=int, default=1,
+                    help="tier terendah yang diproses. Pembagian tugas 2 laptop: L1 = 1..2, L2 = 3..9")
+    ap.add_argument("--tier-maks", type=int, default=3,
+                    help="1=UU/Perppu/PP/Perpres, 2=+Inpres/Keppres/Perma/POJK/PBI, 3=+peraturan menteri/badan, "
+                         "4=+keputusan, 8=+peraturan provinsi, 9=+kabupaten/kota/desa (8-9 butuh --tingkat semua)")
     ap.add_argument("--tingkat", choices=["pusat", "semua"], default="pusat")
     ap.add_argument("--katalog", default=None, help="katalog.db JDIH untuk dedup (default: <kb>/katalog.db)")
     ap.add_argument("--jeda-min", type=float, default=2.0)
@@ -520,9 +532,9 @@ def main():
         log.info(f"=== BPK: isi antrean dari sitemap {a.tahun_mulai}→{a.tahun_akhir} ===")
         isi_antrean(con, klien, a.tahun_mulai, a.tahun_akhir, a.tingkat == "semua")
         rows = con.execute("""SELECT bpk_id, slug, url, tier FROM peraturan
-            WHERE status='antre' AND tier<=? AND tahun_sitemap BETWEEN ? AND ?
+            WHERE status='antre' AND tier BETWEEN ? AND ? AND tahun_sitemap BETWEEN ? AND ?
             ORDER BY tier, tahun_sitemap DESC, bpk_id DESC LIMIT ?""",
-                           (a.tier_maks, a.tahun_akhir, a.tahun_mulai, a.limit)).fetchall()
+                           (a.tier_min, a.tier_maks, a.tahun_akhir, a.tahun_mulai, a.limit)).fetchall()
         log.info(f"=== BPK: memproses {len(rows)} peraturan (urut terbaru, prioritas UU/PP/Perpres) ===")
         for i, row in enumerate(rows, 1):
             st = proses_peraturan(con, klien, kb, row, katalog, a.simpan_pdf_tier)
