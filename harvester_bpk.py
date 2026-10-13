@@ -278,9 +278,12 @@ def unduh_pdf(klien, url, tujuan: Path):
                 return False, f"lebih dari {MAKS_PDF_MB} MB"
             f.write(chunk)
     with open(tmp, "rb") as f:
-        if f.read(5) != b"%PDF-":
-            tmp.unlink(missing_ok=True)
-            return False, "bukan PDF"
+        kepala = f.read(5)
+    # unlink HARUS di luar blok `with`: di Windows berkas yang masih terbuka tidak bisa dihapus
+    # (WinError 32 mematikan seluruh run — 5 run berturut-turut 12-13 Okt 2026, 0 dokumen baru).
+    if kepala != b"%PDF-":
+        tmp.unlink(missing_ok=True)
+        return False, "bukan PDF"
     tmp.replace(tujuan)
     return True, ""
 
@@ -542,7 +545,16 @@ def main():
                            (a.tier_min, a.tier_maks, a.tahun_akhir, a.tahun_mulai, a.limit)).fetchall()
         log.info(f"=== BPK: memproses {len(rows)} peraturan (urut terbaru, prioritas UU/PP/Perpres) ===")
         for i, row in enumerate(rows, 1):
-            st = proses_peraturan(con, klien, kb, row, katalog, a.simpan_pdf_tier)
+            try:
+                st = proses_peraturan(con, klien, kb, row, katalog, a.simpan_pdf_tier)
+            except Diblokir:
+                raise
+            except Exception as e:  # satu dokumen bermasalah tidak boleh mematikan seluruh run
+                log.error(f"  error dokumen {row[1]}: {type(e).__name__}: {e}")
+                con.execute("UPDATE peraturan SET status='gagal-pdf', catatan=? WHERE bpk_id=?",
+                            (f"error-skrip: {type(e).__name__}: {e}"[:300], row[0]))
+                con.commit()
+                st = "error-skrip"
             hitung[st] = hitung.get(st, 0) + 1
             log.info(f"  [{i}/{len(rows)}] {st:14} {row[1]}")
             klien.tidur()
