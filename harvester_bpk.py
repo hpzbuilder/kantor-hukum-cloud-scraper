@@ -160,7 +160,7 @@ def db_buka(kb: Path) -> sqlite3.Connection:
 
 
 # ------------------------------------------------------------------ sitemap
-def isi_antrean(con, klien, tahun_mulai, tahun_akhir, semua_tingkat, segarkan_hari=3):
+def isi_antrean(con, klien, tahun_mulai, tahun_akhir, semua_tingkat, segarkan_hari=3, wilayah=None):
     for th in range(tahun_mulai, tahun_akhir - 1, -1):
         baris = con.execute("SELECT dibaca_pada FROM sitemap_tahun WHERE tahun=?", (th,)).fetchone()
         tahun_berjalan = th >= datetime.now().year - 1
@@ -186,6 +186,8 @@ def isi_antrean(con, klien, tahun_mulai, tahun_akhir, semua_tingkat, segarkan_ha
                 continue
             tier = tier_dari_slug(m.group(2))
             if tier is None and not semua_tingkat:
+                continue
+            if wilayah and not any(p in "-" + m.group(2) + "-" for p in wilayah):
                 continue
             lm = re.search(r"<lastmod>(.*?)</lastmod>", b)
             cur = con.execute(
@@ -510,6 +512,9 @@ def main():
                     help="1=UU/Perppu/PP/Perpres, 2=+Inpres/Keppres/Perma/POJK/PBI, 3=+peraturan menteri/badan, "
                          "4=+keputusan, 8=+peraturan provinsi, 9=+kabupaten/kota/desa (8-9 butuh --tingkat semua)")
     ap.add_argument("--tingkat", choices=["pusat", "semua"], default="pusat")
+    ap.add_argument("--wilayah", default=None,
+                    help="pola slug dipisah koma, hanya dokumen yang cocok yang diantrekan/diproses, mis. "
+                         "'-prov-riau-,-kab-siak-,-kota-pekanbaru-'. Diurut TAHUN terbaru dulu.")
     ap.add_argument("--katalog", default=None, help="katalog.db JDIH untuk dedup (default: <kb>/katalog.db)")
     ap.add_argument("--jeda-min", type=float, default=2.0)
     ap.add_argument("--jeda-maks", type=float, default=4.0)
@@ -538,11 +543,16 @@ def main():
     kode = 0
     try:
         log.info(f"=== BPK: isi antrean dari sitemap {a.tahun_mulai}→{a.tahun_akhir} ===")
-        isi_antrean(con, klien, a.tahun_mulai, a.tahun_akhir, a.tingkat == "semua")
+        wilayah = [p.strip() for p in a.wilayah.split(",") if p.strip()] if a.wilayah else None
+        isi_antrean(con, klien, a.tahun_mulai, a.tahun_akhir, a.tingkat == "semua", wilayah=wilayah)
         rows = con.execute("""SELECT bpk_id, slug, url, tier FROM peraturan
+            WHERE status='antre' AND tier BETWEEN ? AND ? AND tahun_sitemap BETWEEN ? AND ?
+            ORDER BY tahun_sitemap DESC, tier, bpk_id DESC LIMIT ?""" if wilayah else """SELECT bpk_id, slug, url, tier FROM peraturan
             WHERE status='antre' AND tier BETWEEN ? AND ? AND tahun_sitemap BETWEEN ? AND ?
             ORDER BY tier, tahun_sitemap DESC, bpk_id DESC LIMIT ?""",
                            (a.tier_min, a.tier_maks, a.tahun_akhir, a.tahun_mulai, a.limit)).fetchall()
+        if wilayah:   # DB stream berwilayah: hanya baris yang cocok pola (antrean lama dari run tanpa filter diabaikan)
+            rows = [r for r in rows if any(p in "-" + r[1] + "-" for p in wilayah)]
         log.info(f"=== BPK: memproses {len(rows)} peraturan (urut terbaru, prioritas UU/PP/Perpres) ===")
         for i, row in enumerate(rows, 1):
             try:
